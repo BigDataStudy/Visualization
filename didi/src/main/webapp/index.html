@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<script src="./js/echarts-all.js"></script>
+		<script src="./js/jquery-3.0.0.js"></script>
+	</head>
+	
+	<body>
+		<div id="main" style="width:600p;height:400px;"></div>
+		<script type="text/javascript">
+			var myChart = echarts.init(document.getElementById("main"));
+/* 			myChart.showLoading({  
+		        text: 'Loading...'  
+		    }); */
+			var id = [];
+			var reply = [];
+			var request = [];
+			
+			refresh();
+		
+			function getServerData(){
+				
+				$.ajax({
+					type:'post',
+					async:false,
+					url:"/didi/RequestServlet",
+					data:{},
+					dataType:'json',
+					success:function(result){
+						console.log(result);
+						if(result){
+							for(var i=0;i<result.data.length;i++){
+								id.push(result.data[i].id);
+								reply.push(result.data[i].reply);
+								request.push(result.data[i].request);
+							}
+						}
+					},
+					error : function(errorMsg){
+						alert("Sorry,loading fail!");
+						myChart.hideLoading();
+					}
+				});
+			}
+			
+			function getOption(){
+				var option = {
+						timeline:{
+							data:['2016-07-14','2016-07-15'],
+							/* label:{
+								formatter:function(s){
+									return s.slice(0,10);
+								}
+							} */
+							autoPlay:true,
+							playInterval:10000
+						},
+						options:[{
+							title : {
+								text : '滴滴订单状态',
+								subtext : '请求订单与响应订单'
+							},
+							tooltip : {
+								trigger : 'axis'
+							},
+							legend : {
+								data : [ '请求订单数量', '响应订单数量' ],
+								selected:{
+									'请求订单数量':true,
+									'响应订单数量':true
+								}
+							},
+							toolbox : {
+								show : true,
+								feature : {
+									mark : {
+										show : true
+									},
+									dataView : {
+										show : true,
+										readOnly : false
+									},
+									magicType : {
+										show : true,
+										type : [ 'line', 'bar' ]
+									},
+									restore : {
+										show : true
+									},
+									saveAsImage : {
+										show : true
+									}
+								}
+							},
+							calculable : true,
+							xAxis : [ {
+								type : 'category',
+								axisLabel:{'interval':0},
+								data : id
+							} ],
+							yAxis : [ {
+								type : 'value',
+								name:'单',
+							    axisLabel:{formatter:'{value}'}
+							} ],
+							series : [ {
+								name : '请求订单数量',
+								type : 'bar',
+								itemStyle : {
+									normal : {
+										color : 'rgba(193,35,43,0.5)',
+										label : {
+											show : true
+										}
+									}
+								},
+								data : request
+							}, {
+								name : '响应订单数量',
+								type : 'bar',
+								itemStyle : {
+									normal : {
+										color : 'rgba(181,195,52,1)',
+										label : {
+											show : true,
+											textStyle : {
+												color : '#27727B'
+											}
+										}
+									}
+								},
+								data : reply
+							}]
+						},
+						{
+							title:{text : '某某地区滴滴订单状态'},
+							series:[
+								{},
+								{},
+							]
+						}
+					   ]
+					};
+				    return option;
+			}
+			
+			function refresh(){
+				/* if (myChart && myChart.dispose)
+						myChart.dispose(); */
+				myChart = echarts.init(document.getElementById("main"));
+				getServerData();		
+				//myChart.hideLoading();
+				myChart.setOption(getOption() );
+				setTimeout("refresh()" , 10000);
+			}
+		</script>
+	</body>
+</html>
