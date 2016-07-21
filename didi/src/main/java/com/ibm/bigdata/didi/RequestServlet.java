@@ -1,8 +1,8 @@
 package com.ibm.bigdata.didi;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -12,17 +12,16 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.alibaba.fastjson.JSON;
+
 
 /**
  * Servlet implementation class RequestServlet
@@ -63,12 +62,20 @@ public class RequestServlet extends HttpServlet {
 
 			// retrieve a handle to the target table.
 			table = connection.getTable(TABLE_NAME);
-
-			Get get = new Get(Bytes.toBytes("5725c39a5e5f4c188d382da3910b3f3f-2016-07-14"));
+			String district = request.getParameter("district");
+			String date = request.getParameter("datett");
+			if(district == null || district==""){
+				district = "f9280c5dab6910ed44e518248048b9fe";
+			}
+			if(date ==null || date ==""){
+				SimpleDateFormat sdf= new SimpleDateFormat("yyyy-mm-dd");
+				date = sdf.format(new Date());
+			}
+			Get get = new Get(Bytes.toBytes(district.concat("-").concat(date)));
 			Result rs= table.get(get);
 			if (rs != null && !rs.isEmpty()) {
 				Series sr= new Series();
-				sr.setDistrict("5725c39a5e5f4c188d382da3910b3f3f");
+				sr.setDistrict(district);
 				for (int i=1; i<145; ++i) {
 					
 					String requestData = null, replyData = null;
@@ -95,9 +102,9 @@ public class RequestServlet extends HttpServlet {
 				String output= JSON.toJSONString(sr);
 				response.getWriter().append(output);
 			}
-			
-
-		} finally {
+		} catch(Exception e){
+			e.printStackTrace();
+		}finally {
 			// close everything down
 			if (table != null)
 				table.close();
@@ -114,7 +121,6 @@ public class RequestServlet extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// TODO Auto-generated method stub
 		doGet(request, response);
 	}
 

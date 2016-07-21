@@ -7,6 +7,19 @@
 	</head>
 	
 	<body>
+		<div>
+			<select id="district">
+				<option value="fc34648599753c9e74ab238e9a4a07ad">朝阳<option>
+				<option value="fff4e8465d1e12621bc361276b6217cf">海淀<option>
+				<option value="f9280c5dab6910ed44e518248048b9fe">昌平<option>
+			</select>
+			
+			<select id="datett">
+				<option value="2016-07-18">2016-07-18</option>
+				<option value="2016-07-19">2016-07-19</option>
+				<option value="2016-07-20">2016-07-20</option>
+			</select>
+		</div>
 		<div id="main" style="width:600p;height:400px;"></div>
 		<script type="text/javascript">
 			var myChart = echarts.init(document.getElementById("main"));
@@ -17,15 +30,17 @@
 			var reply = [];
 			var request = [];
 			
+			
 			refresh();
-		
 			function getServerData(){
-				
+			   id = [];
+			   reply = [];
+			   request = [];
 				$.ajax({
 					type:'post',
 					async:false,
 					url:"/didi/RequestServlet",
-					data:{},
+					data:{district: $('#district').val(),datett:$('#datett').val()},
 					dataType:'json',
 					success:function(result){
 						console.log(result);
@@ -47,7 +62,8 @@
 			function getOption(){
 				var option = {
 						timeline:{
-							data:['2016-07-14','2016-07-15'],
+						// TODO the date should be from the response
+							data:[$('#datett').val()],
 							/* label:{
 								formatter:function(s){
 									return s.slice(0,10);
@@ -145,15 +161,28 @@
 				    return option;
 			}
 			
+			$('#district').change(function(){
+				console.log("distict changed");
+				getServerData();
+				refresh();
+			});
+			$('#datett').change(function(){
+				console.log("date changed");
+				getServerData();
+				refresh();
+			});
+			
+	
+			
 			function refresh(){
-				/* if (myChart && myChart.dispose)
-						myChart.dispose(); */
+				//if (myChart && myChart.dispose)
+					//myChart.dispose(); 
 				myChart = echarts.init(document.getElementById("main"));
 				getServerData();		
 				//myChart.hideLoading();
 				myChart.setOption(getOption() );
-				setTimeout("refresh()" , 10000);
-			}
+				//setTimeout("refresh()" , 10000);
+			} 
 		</script>
 	</body>
 </html>
