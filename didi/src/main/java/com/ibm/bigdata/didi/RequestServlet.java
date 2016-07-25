@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -24,7 +24,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.alibaba.fastjson.JSON;
@@ -37,13 +36,31 @@ public class RequestServlet extends HttpServlet {
 
 	private static final TableName TABLE_NAME = TableName
 			.valueOf("didi:order_statistics");
-	private static final int FIRST_DAY = Calendar.MONDAY;
 
 	/**
 	 * Default constructor.
 	 */
 	public RequestServlet() {
 		// TODO Auto-generated constructor stub
+	}
+	
+	/**
+	 * Connection to the cluster. A single connection shared by all
+	 * application threads.
+	 */
+	Connection connection = null;
+	
+	@Override
+	public void init(ServletConfig config) throws ServletException {
+		super.init(config);
+		Configuration con = new Configuration();
+		con.set("hbase.zookeeper.quorum", "9.115.65.93");
+		// establish the connection to the cluster.
+		try {
+			connection = ConnectionFactory.createConnection(con);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -54,20 +71,26 @@ public class RequestServlet extends HttpServlet {
 			HttpServletResponse response) throws ServletException, IOException {
 		String district = request.getParameter("district");
 		String date = request.getParameter("datett");
-		Result rs = new Result();
-		Series sr;
+		String output;
 		if (district == null || district == "") {
 			district = "f9280c5dab6910ed44e518248048b9fe";
 		}
 		if (date == null || date == "") {
-			date = "2016-07-18";
-			rs = getRsFromHBase(district, date);
-			sr = getSeries(rs, district, date);
+			List<String> dateList = getAWeekDates();
+			List<Series> srList = new ArrayList<Series>();
+			for(String dateStr : dateList){
+				Result rs = getRsByDate(district, dateStr);
+				Series sr = getSeries(rs, district, dateStr);
+				if (sr != null){
+					srList.add(sr);
+				}
+			}
+			output = JSON.toJSONString(srList);
 		} else {
-			rs = getRsFromHBase(district, date);
-			sr = getSeries(rs,district, date);
+			Result rs = getRsByDate(district, date);
+			Series sr = getSeries(rs, district, date);
+			output = JSON.toJSONString(sr);
 		}
-		String output = JSON.toJSONString(sr);
 		response.getWriter().append(output);
 		// response.getWriter().append("Served at: ").append(request.getContextPath());
 	}
@@ -81,43 +104,21 @@ public class RequestServlet extends HttpServlet {
 		doGet(request, response);
 	}
 
-	private Result getRsFromHBase(String district, String date)
+	private Result getRsByDate(String district, String date)
 			throws IOException {
-		Configuration con = new Configuration();
-		con.set("hbase.zookeeper.quorum", "9.115.65.93");
-
-		/**
-		 * Connection to the cluster. A single connection shared by all
-		 * application threads.
-		 */
-		Connection connection = null;
 		/**
 		 * A lightweight handle to a specific table. Used from a single thread.
 		 */
 		Table table = null;
 		try {
-			// establish the connection to the cluster.
-			connection = ConnectionFactory.createConnection(con);
+			if ( null == connection ||  connection.isClosed() ){
+				this.init(null);
+			}
 			// retrieve a handle to the target table.
 			table = connection.getTable(TABLE_NAME);
-			Get get = new Get(Bytes.toBytes(district.concat("-").concat(date)));
-			Result rs = table.get(get);
-//			Result rs = new Result();
-			List<String> weekList =  getCurWeekDates();
-			
-			
-					byte []	startRow = Bytes.toBytes(district.concat("-").concat(weekList.get(0)));
-			byte []	stopRow = Bytes.toBytes(district.concat("-").concat(weekList.get(weekList.size()-1)));
-			
-			Scan scan = new  Scan( startRow, stopRow);
-			
-			ResultScanner rsc = table.getScanner(scan);
-			for ( Iterator<Result> it = rsc.iterator(); it.hasNext(); ){
-				Result r = it.next();
-//				System.out.println(new String(r.getRow()));
-//				System.out.println(r);
-			}
-			
+			 Get get = new
+			 Get(Bytes.toBytes(district.concat("-").concat(date)));
+			 Result rs = table.get(get);
 			return rs;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -125,18 +126,58 @@ public class RequestServlet extends HttpServlet {
 			// close everything down
 			if (table != null)
 				table.close();
-			if (connection != null)
-				connection.close();
 		}
 		return null;
+	}
+	
+	
+	private ResultScanner getRsByWeek(String district, List<String> dateList)
+			throws IOException {
+		/**
+		 * A lightweight handle to a specific table. Used from a single thread.
+		 */
+		Table table = null;
+		try {
+			if ( null == connection ||  connection.isClosed() ){
+				this.init(null);
+			}
+			table = connection.getTable(TABLE_NAME);
+			byte[] startRow = Bytes.toBytes(district.concat("-").concat(
+					dateList.get(0)));
+			byte[] stopRow = Bytes.toBytes(district.concat("-").concat(
+					dateList.get(dateList.size() - 1)));
+
+			Scan scan = new Scan(startRow, stopRow);
+
+			return table.getScanner(scan);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			// close everything down
+			if (table != null)
+				table.close();
+		}
+		return null;
+	}
+
+	private List<Series> getSeriesList(ResultScanner rsc, String district) {
+		List<Series> all = new ArrayList<Series>();
+		if ( rsc.iterator() != null ){
+			Iterator<Result> it = rsc.iterator(); 
+			if (it.hasNext()) {
+				getSeries(it.next(), district, "");
+			}
+		}
+			
+		return all;
 	}
 
 	private Series getSeries(Result rs, String district, String date) {
 		if (rs != null && !rs.isEmpty()) {
 			Series sr = new Series();
 			sr.setDistrict(district);
+			sr.setDate(date);
 			for (int i = 1; i < 145; ++i) {
-
 				String requestData = null, replyData = null;
 				Cell cell = rs.getColumnLatestCell(
 						Bytes.toBytes(String.valueOf(i)),
@@ -162,21 +203,18 @@ public class RequestServlet extends HttpServlet {
 		}
 		return null;
 	}
-	
-	private List<String> getCurWeekDates(){
-		List<String> curWeekDates = new ArrayList<String>(); 
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd");
-		sdf.format(new Date());
+
+	private List<String> getAWeekDates() {
+		List<String> curWeekDates = new ArrayList<String>();
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 		Calendar calendar = Calendar.getInstance();
-		while (calendar.get(Calendar.DAY_OF_WEEK) != FIRST_DAY) {
-			calendar.add(Calendar.DATE, -1);
-		}
+		calendar.add(Calendar.DATE, -6);
 		for (int i = 0; i < 7; i++) {
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-			String dateStr = dateFormat.format(calendar.getTime());
+			String dateStr = sdf.format(calendar.getTime());
 			curWeekDates.add(dateStr);
 			calendar.add(Calendar.DATE, 1);
 		}
+
 		return curWeekDates;
 	}
 

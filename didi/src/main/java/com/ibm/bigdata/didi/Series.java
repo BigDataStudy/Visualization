@@ -6,6 +6,7 @@ import java.util.List;
 public class Series {
 	
 	private String district;
+	private String date;
 	
 	private List<Slot> data;
 
@@ -28,6 +29,18 @@ public class Series {
 		this.data = data;
 	}
 	
-	
+	public Series merge(Series s){
+		getData().addAll(s.getData());
+		this.district = s.getDistrict();
+		return s;
+	}
+
+	public String getDate() {
+		return date;
+	}
+
+	public void setDate(String date) {
+		this.date = date;
+	}
 
 }

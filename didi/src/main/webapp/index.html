@@ -36,12 +36,14 @@
 			var id = [];
 			var reply = [];
 			var request = [];
-			var dateList = ['a'];
+			var dateList = [];
+			var dList = [];
 			
 			function getServerData(){
 			   id = [];
 			   reply = [];
 			   request = [];
+			   dList = [];
 				$.ajax({
 					type:'post',
 					async:false,
@@ -49,12 +51,16 @@
 					data:{district: $('#district').val(),datett:$('#datett').val()},
 					dataType:'json',
 					success:function(result){
-						console.log(result);
+					console.log(result);
+					console.log(result.length);
 						if(result){
-							for(var i=0;i<result.data.length;i++){
-								id.push(result.data[i].id);
-								reply.push(result.data[i].reply);
-								request.push(result.data[i].request);
+							for(var i=0;i<result.length;i++){
+							dList.push(result[i].date);
+								for(var j=0; j<result[i].data.length;j++){
+									id.push(result[i].data[j].id);
+									reply.push(result[i].data[j].reply);
+									request.push(result[i].data[j].request);
+								}
 							}
 						}
 					},
@@ -68,7 +74,7 @@
 			////////////////////////////////////////////////////////////////////////////
 			//window.onload = function(){         
             var cells = $('td');
-            var currentFirstDate;
+            var curDate =new Date();
             
             var formatDate = function(date){             
                 var year = date.getFullYear()+'-';
@@ -82,12 +88,10 @@
                 return date;
             };
             var setDate = function(date){             
-                var week = date.getDay()-1;
-                date = addDate(date,week*-1);
-                currentFirstDate = new Date(date);
+                addDate(curDate,-7);
 				dateList = [];
                 for(var i = 0;i<7;i++){                 
-                    dateList[i] = formatDate(i==0 ? date : addDate(date,1));
+                    dateList[i] = formatDate(addDate(curDate,1));
                     cells[i].innerHTML = dateList[i];
                 }
             };           
@@ -95,12 +99,16 @@
             setDate(new Date());
              
            	$('#last-week').click(function(){
-                setDate(addDate(currentFirstDate,-7));
+                setDate(addDate(curDate,-7));
                 console.log(dateList);
+                getServerData();
+                refresh();
             });             
             $('#next-week').click(function(){                 
-                setDate(addDate(currentFirstDate,7));
+                setDate(addDate(curDate,7));
+                getServerData()
                  console.log(dateList);
+                refresh();
             });     
         //  } 
 		////////////////////////////////////////////////////////////////////////////	
