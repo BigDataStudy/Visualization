@@ -27,7 +27,6 @@
 			var request = new Array();
 			var dateList = [];
 			var dList = [];
-			var datett;
 			function getServerData(){
 				id = new Array();
 				reply = new Array();
@@ -36,7 +35,7 @@
 					type:'post',
 					async:false,
 					url:"/didi/RequestServlet",
-					data:{district: $('#district').val(),datett:datett},
+					data:{district: $('#district').val(),datett:$('#datett').val()},
 					dataType:'json',
 					success:function(result){
 						if(result && result.length == 7){
@@ -44,20 +43,23 @@
 								id[i] = new Array();
 								reply[i] = new Array();
 								request[i] = new Array();
-								if(result[i] !=null && result[i] !='null'){
-									for(var j=0; j<result[i].data.length;j++){
-										id[i].push(result[i].data[j].id);
-										reply[i].push(result[i].data[j].reply);
-										request[i].push(result[i].data[j].request);
-									}
-								}else{
-									for(var j=0; j<60;j++){
-										id[i].push(0);
+								for(var j=0; j<=144;j++){
+										id[i].push(j);
 										reply[i].push(0);
 										request[i].push(0);
 									}
+								if(result[i] !=null && result[i] !='null'){
+									for(var j=0; j<result[i].data.length;j++){
+										/* id[i].push(result[i].data[j].id);
+										reply[i].push(result[i].data[j].reply);
+										request[i].push(result[i].data[j].request); */
+										var temp = result[i].data[j].id
+										console.log(id[i][temp]);
+										id[i][temp] = result[i].data[j].id;
+										reply[i][temp] = result[i].data[j].reply;
+										request[i][temp] = result[i].data[j].request;
+									}
 								}
-								
 							}
 						}
 					},
@@ -66,7 +68,6 @@
 						myChart.hideLoading();
 					}
 				});
-				datett = "";
 			}
 			
 			////////////////////////////////////////////////////////////////////////////
@@ -106,17 +107,21 @@
              
            	$('#last-week').click(function(){
            		var ldate = addDate(curDate,-7);
-               	datett = formatDate2(ldate);
                	setDate(ldate);
+               	$('#datett').val(formatDate2(ldate));
                 refresh();
             });             
             $('#next-week').click(function(){    
             	var ndate = addDate(curDate,7);
             	setDate(ndate);
-                datett = formatDate2(ndate);
+                $('#datett').val(formatDate2(ndate));
                 refresh();
             });   
             
+           $('#district').change(function(){
+				console.log("distict changed");
+				refresh();
+			});
 		////////////////////////////////////////////////////////////////////////////	
 			function getOption(){
 				var option = {
